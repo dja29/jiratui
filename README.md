@@ -48,14 +48,12 @@ To get a Jira API token, go to https://id.atlassian.com/manage-profile/security/
 
 Your Jira domain is configured in `config.json` (see next step).
 
-4. Create a helper before your first run (macOS only), and use it to start the app:
+4. Create an alias before your first run (macOS only), and use it to start the app:
 
 ```bash
-echo 'jira() { cd "$(pwd)" && bun run start -- "$@"; }' >> ~/.zshrc
+echo "alias jira='cd $(pwd); bun run start'" >> ~/.zshrc
 source ~/.zshrc
 ```
-
-`jira()` is a shell function that forwards any flags to the app (so `jira --config` works).
 
 Have some JQL ready (you’ll be prompted for it during setup).
 
@@ -68,7 +66,7 @@ cp config.json.example config.json
 OR
 
 ```bash
-jira --config
+bun run start -- --config
 ```
 
 This will guide you through creating your configuration, including:
