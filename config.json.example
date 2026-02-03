@@ -1,0 +1,23 @@
+{
+  "project": "PROJ",
+  "domain": "your-domain.atlassian.net",
+  "views": [
+    {
+      "name": "All Open",
+      "jql": "status in (\"Open\", \"In Progress\") ORDER BY created DESC"
+    },
+    {
+      "name": "My Work",
+      "jql": "assignee = currentUser() AND status != Resolved ORDER BY updated DESC"
+    },
+    {
+      "name": "High Priority",
+      "jql": "priority = High AND status != Done ORDER BY created DESC"
+    }
+  ],
+  "activity": {
+    "enabled": true,
+    "pollingIntervalMinutes": 5,
+    "jql": "(assignee = currentUser() OR reporter = currentUser()) AND updated >= -1h ORDER BY updated DESC"
+  }
+}

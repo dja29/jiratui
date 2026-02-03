@@ -1,0 +1,40 @@
+{
+  "name": "jira",
+  "version": "1.0.0",
+  "description": "Jira Service Desk TUI",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "bun run src/index.tsx",
+    "jql": "bun run src/jql-helper.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "jira",
+    "tui",
+    "terminal",
+    "opentui"
+  ],
+  "author": "Dave Aldwinckle <daldwinc@uwaterloo.ca>",
+  "repository": {
+    "type": "git",
+    "url": "https://git.uwaterloo.ca/ns/jira-tui.git"
+  },
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@opentui/core": "^0.1.72",
+    "@opentui/react": "^0.1.72",
+    "clipboardy": "^5.0.2",
+    "dotenv": "^17.2.3",
+    "react": "^19.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.6",
+    "@types/react": "^19.2.8",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
