@@ -66,8 +66,10 @@ cp config.json.example config.json
 OR
 
 ```bash
-bun run start -- --config
+jira
 ```
+
+If `config.json` doesn’t exist yet, `jira` will automatically start the setup wizard.
 
 This will guide you through creating your configuration, including:
 - Setting your Jira project key
