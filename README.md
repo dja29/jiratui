@@ -6,6 +6,7 @@ A terminal user interface for viewing Jira Service Desk issues.
 
 - [Bun](https://bun.sh/) (required - OpenTUI uses file types not supported by Node.js)
 - A Jira Cloud account with API access
+- This package is offered without support and is only tested on macOS.
 
 ## Installation
 
