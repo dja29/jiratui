@@ -51,7 +51,7 @@ Your Jira domain is configured in `config.json` (see next step).
 4. Create an alias before your first run (macOS only), and use it to start the app:
 
 ```bash
-echo "alias jira='cd $(pwd); bun run start'" >> ~/.zshrc
+echo 'jira() { cd "$(pwd)" && bun run start -- "$@"; }' >> ~/.zshrc
 source ~/.zshrc
 ```
 
@@ -66,7 +66,7 @@ cp config.json.example config.json
 OR
 
 ```bash
-jira -- --config
+jira --config
 ```
 
 This will guide you through creating your configuration, including:
