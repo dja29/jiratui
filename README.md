@@ -57,16 +57,16 @@ source ~/.zshrc
 
 Have some JQL ready (you’ll be prompted for it during setup).
 
-5. Use the default config or start the app in config mode for a manual setup:
+5. Use the default config or start the setup wizard:
 
 ```bash
 cp config.json.example config.json
 ```
 
-OR 
+OR
 
 ```bash
-bun run start -- --config
+jira -- --config
 ```
 
 This will guide you through creating your configuration, including:
