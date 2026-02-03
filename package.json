@@ -19,7 +19,7 @@
   "author": "Dave Aldwinckle <daldwinc@uwaterloo.ca>",
   "repository": {
     "type": "git",
-    "url": "https://git.uwaterloo.ca/ns/jira-tui.git"
+    "url": "https://github.com/dja29/jiratui.git"
   },
   "license": "ISC",
   "type": "module",

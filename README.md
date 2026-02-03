@@ -26,7 +26,7 @@ brew install oven-sh/bun/bun
 
 
 ```bash
-git clone https://git.uwaterloo.ca/ns/jira-tui.git
+git clone https://github.com/dja29/jiratui.git
 cd jira-tui
 bun install
 ```
