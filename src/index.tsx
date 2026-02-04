@@ -91,6 +91,8 @@ function ValidationErrorScreen({ validationErrors, width, height }: ValidationEr
 const CONFIG_PATH = join(process.cwd(), "config.json");
 const STATE_PATH = join(process.cwd(), "state.conf");
 const ISSUE_CACHE_TTL_MS = 30_000;
+const RETRY_BASE_DELAY_MS = 1_000;
+const RETRY_MAX_DELAY_MS = 60 * 60 * 1000;
 
 interface AppState {
   flaggedIssueKeys: string[];
@@ -1071,6 +1073,8 @@ function App({ prevalidated, onExit }: AppProps) {
   const [loadingProgress, setLoadingProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ViewValidation[]>([]);
+  const [retryDelayMs, setRetryDelayMs] = useState<number | null>(null);
+  const [retryInSeconds, setRetryInSeconds] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("created");
   const [newIssueIds, setNewIssueIds] = useState<Set<string>>(new Set());
   const [blinkOn, setBlinkOn] = useState(true);
@@ -1084,6 +1088,31 @@ function App({ prevalidated, onExit }: AppProps) {
   const settingsKeyHandler = useRef<((key: KeyEvent) => boolean) | null>(null);
   const prevalidatedInitial = useRef(prevalidated);
   const issueCacheRef = useRef<IssueCache>({});
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetRetry = () => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    setRetryDelayMs(null);
+    setRetryInSeconds(null);
+  };
+
+  const scheduleRetry = (retryAction: () => void) => {
+    if (retryTimerRef.current) return;
+    const delay = Math.min(retryDelayMs ?? RETRY_BASE_DELAY_MS, RETRY_MAX_DELAY_MS);
+    setRetryInSeconds(Math.ceil(delay / 1000));
+
+    retryTimerRef.current = setTimeout(() => {
+      retryTimerRef.current = null;
+      setRetryDelayMs(Math.min(delay * 2, RETRY_MAX_DELAY_MS));
+      setRetryInSeconds(null);
+      setError(null);
+      setLoading(true);
+      retryAction();
+    }, delay);
+  };
 
   const flaggedIssueKeys = new Set(appState.flaggedIssueKeys);
 
@@ -1172,84 +1201,97 @@ function App({ prevalidated, onExit }: AppProps) {
       if (didFetch || isInitial) {
         setLastRefresh(new Date());
       }
+      resetRetry();
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
       setLoading(false);
+      scheduleRetry(() => fetchAllTabs(false, true));
+    }
+  };
+
+  const validateAndFetch = async () => {
+    if (validationDone.current) return;
+    validationDone.current = true;
+
+    const configValidation = validateConfig(config);
+    if (configValidation.errors.length > 0) {
+      setError(configValidation.errors.join("\n"));
+      setLoading(false);
+      return;
+    }
+
+    if (prevalidatedInitial.current) {
+      prevalidatedInitial.current = false;
+      fetchAllTabs(true);
+      return;
+    }
+    
+    if (!jiraClient.current) {
+      jiraClient.current = new JiraClient(config.domain);
+    }
+    
+    setLoadingProgress("Validating JQL queries...");
+    
+    const allJql = buildValidationQueries(config);
+
+    if (allJql.length === 0) {
+      setError(
+        "No views configured. Create config.json (copy config.json.example) or run: bun run start -- --config",
+      );
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const results = await jiraClient.current.validateJql(allJql.map((q) => q.jql));
+      
+      const validationResults: ViewValidation[] = results
+        .map((result, i) => {
+          const item = allJql[i];
+          if (!item) return null;
+          return {
+            name: item.name,
+            jql: item.jql,
+            valid: result.valid,
+            errors: result.errors,
+            warnings: result.warnings,
+          };
+        })
+        .filter((v): v is ViewValidation => v !== null && (!v.valid || v.warnings.length > 0));
+      
+      const hasErrors = validationResults.some((v) => !v.valid);
+      if (hasErrors) {
+        setValidationErrors(validationResults.filter((v) => !v.valid));
+        setLoading(false);
+        return;
+      }
+      
+      fetchAllTabs(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Validation failed");
+      setLoading(false);
+      validationDone.current = false;
+      scheduleRetry(() => validateAndFetch());
     }
   };
 
   useEffect(() => {
-    const validateAndFetch = async () => {
-      if (validationDone.current) return;
-      validationDone.current = true;
-
-      const configValidation = validateConfig(config);
-      if (configValidation.errors.length > 0) {
-        setError(configValidation.errors.join("\n"));
-        setLoading(false);
-        return;
-      }
-
-      if (prevalidatedInitial.current) {
-        prevalidatedInitial.current = false;
-        fetchAllTabs(true);
-        return;
-      }
-      
-      if (!jiraClient.current) {
-        jiraClient.current = new JiraClient(config.domain);
-      }
-      
-      setLoadingProgress("Validating JQL queries...");
-      
-      const allJql = buildValidationQueries(config);
-
-      if (allJql.length === 0) {
-        setError(
-          "No views configured. Create config.json (copy config.json.example) or run: bun run start -- --config",
-        );
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        const results = await jiraClient.current.validateJql(allJql.map((q) => q.jql));
-        
-        const validationResults: ViewValidation[] = results
-          .map((result, i) => {
-            const item = allJql[i];
-            if (!item) return null;
-            return {
-              name: item.name,
-              jql: item.jql,
-              valid: result.valid,
-              errors: result.errors,
-              warnings: result.warnings,
-            };
-          })
-          .filter((v): v is ViewValidation => v !== null && (!v.valid || v.warnings.length > 0));
-        
-        const hasErrors = validationResults.some((v) => !v.valid);
-        if (hasErrors) {
-          setValidationErrors(validationResults.filter((v) => !v.valid));
-          setLoading(false);
-          return;
-        }
-        
-        fetchAllTabs(true);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Validation failed");
-        setLoading(false);
-      }
-    };
-    
     validateAndFetch();
   }, [config]);
 
   useEffect(() => {
     issueCacheRef.current = issueCache;
   }, [issueCache]);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const refreshInterval = setInterval(() => {
@@ -1449,6 +1491,11 @@ function App({ prevalidated, onExit }: AppProps) {
           <strong>Error</strong>
         </text>
         <text fg="#F87171">{error}</text>
+        {retryInSeconds ? (
+          <text fg="#FBBF24">Retrying in {retryInSeconds}s...</text>
+        ) : (
+          <text fg="#888888">Retrying soon...</text>
+        )}
         <text fg="#888888">Press Esc to exit</text>
       </box>
     );
